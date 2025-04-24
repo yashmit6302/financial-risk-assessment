@@ -1,46 +1,41 @@
 import streamlit as st
 import pandas as pd
-from sklearn.preprocessing import StandardScaler
+import seaborn as sns
+import matplotlib.pyplot as plt
 
-st.set_page_config(page_title="Financial Risk Assessment App", layout="wide")
-st.title("💰 Financial Risk Assessment Tool")
+st.set_page_config(page_title="Financial Risk Dashboard", layout="wide")
+st.title("💼 Financial Risk Assessment Dashboard")
 
-uploaded_file = st.file_uploader("Upload the Online Retail CSV file", type=["csv"])
+uploaded_file = st.file_uploader("Upload your Financial Risk Assessment CSV", type=["csv"])
 
 if uploaded_file:
-    df = pd.read_csv(uploaded_file, encoding='ISO-8859-1')
+    df = pd.read_csv(uploaded_file)
 
-    # Clean data
-    df['InvoiceDate'] = pd.to_datetime(df['InvoiceDate'])
-    df = df.dropna(subset=['CustomerID'])
-    df = df[~df['InvoiceNo'].astype(str).str.startswith('C')]
-    df['TotalAmount'] = df['Quantity'] * df['UnitPrice']
+    st.subheader("📋 Data Preview")
+    st.dataframe(df.head())
 
-    # RFM features
-    rfm = df.groupby('CustomerID').agg({
-        'InvoiceDate': lambda x: (df['InvoiceDate'].max() - x.max()).days,
-        'InvoiceNo': 'nunique',
-        'TotalAmount': 'sum'
-    })
-    rfm.columns = ['Recency', 'Frequency', 'Monetary']
+    st.subheader("📊 Risk Rating Distribution")
+    risk_counts = df['Risk Rating'].value_counts()
+    st.bar_chart(risk_counts)
 
-    # Risk scoring logic
-    rfm['RiskScore'] = (
-        (rfm['Recency'] > rfm['Recency'].median()).astype(int) +
-        (rfm['Monetary'] < rfm['Monetary'].median()).astype(int) +
-        (rfm['Frequency'] > rfm['Frequency'].median()).astype(int)
-    )
+    st.subheader("💳 Average Credit Score by Risk Rating")
+    avg_credit = df.groupby('Risk Rating')['Credit Score'].mean()
+    st.bar_chart(avg_credit)
 
-    # Categorize risk
-    rfm['RiskLevel'] = rfm['RiskScore'].apply(
-        lambda x: 'High' if x >= 2 else ('Medium' if x == 1 else 'Low')
-    )
+    st.subheader("📈 Debt-to-Income Ratio by Risk Rating")
+    fig, ax = plt.subplots()
+    sns.boxplot(x='Risk Rating', y='Debt-to-Income Ratio', data=df, ax=ax)
+    st.pyplot(fig)
 
-    st.subheader("🧾 Financial Risk Scores")
-    st.dataframe(rfm[['Recency', 'Frequency', 'Monetary', 'RiskScore', 'RiskLevel']].sort_values(by='RiskScore', ascending=False))
+    st.subheader("💰 Income Distribution by Risk Level")
+    fig2, ax2 = plt.subplots()
+    sns.violinplot(x='Risk Rating', y='Income', data=df, ax=ax2)
+    st.pyplot(fig2)
 
-    st.subheader("📊 Risk Level Distribution")
-    st.bar_chart(rfm['RiskLevel'].value_counts())
+    st.subheader("🏦 Assets Value vs. Risk Rating")
+    fig3, ax3 = plt.subplots()
+    sns.boxplot(x='Risk Rating', y='Assets Value', data=df, ax=ax3)
+    st.pyplot(fig3)
 
 else:
-    st.info("Please upload the Online Retail dataset (CSV file) to assess financial risk.")
+    st.info("Please upload a CSV file containing your financial risk assessment data.")
